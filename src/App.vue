@@ -244,7 +244,7 @@
           >
             <div class="px-4 py-5 sm:p-6 text-center">
               <dt class="text-sm font-medium text-gray-500 truncate">
-                {{ tick.name }} - EUR
+                {{ tick.name }} - {{ currentCurrency }}
               </dt>
               <dd
                 class="mt-1 text-3xl font-semibold text-gray-900"
@@ -294,7 +294,7 @@
       <!-- chart -->
       <section class="relative" v-if="chartCoin">
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-          {{ chartCoin.name }} - EUR
+          {{ chartCoin.name }} - {{ currentCurrency }}
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div
@@ -350,6 +350,7 @@ export default {
     return {
       loadPage: true,
       ticker: "",
+      currentCurrency: "USD",
       tickerArr: [],
       checkHaveCoin: false,
       helpListArr: [],

@@ -6,46 +6,13 @@ export async function getFullListCoins(arr) {
 
 const tickersHandlers = new Map();
 const ws = new WebSocket('wss://ws-feed.exchange.coinbase.com');
-const specialCouples = { k: 1 };
-let btc = null
 ws.addEventListener('message', (e) => {
 	const data = JSON.parse(e.data)
 
-	// if (specialCouples) { }
-	if (data.type === "error" && data.message === "Failed to subscribe") {
-		const [first, second] = data.reason.split(" ")[0].split("-");
-		const handler = tickersHandlers.get(first) ?? [];
-		handler.forEach(fn => fn("N/A"));
-		subscribeMessage("BTC", "USD")
-		subscribeMessage(first, "USD")
-		specialCouples[first] = null;
-	}
 	if (data.type === "l2update") {
-		if (
-			specialCouples.hasOwnProperty(data.product_id.split("-")[0] &&
-				data.product_id.split("-")[0] !== "BTC")
-		) {
-			specialCouples[data.product_id.split("-")[0]] = data?.changes[0][1];
-			if (
-				typeof +specialCouples[data.product_id.split("-")[0]] === "number" &&
-				typeof +btc === "number"
-			) {
-				let s = specialCouples[data.product_id.split("-")[0]] / btc;
-				const handler = tickersHandlers.get(data?.product_id.split("-")[0]) ?? [];
-				handler.forEach(fn => fn(s.toPrecision(4)))
-			}
-		}
-
-		if (!specialCouples.hasOwnProperty(data.product_id.split("-")[0])) {
-			const newPrice = data?.changes[0][1]
-			const handler = tickersHandlers.get(data?.product_id.split("-")[0]) ?? [];
-			handler.forEach(fn => fn(newPrice))
-		}
-
-
-		if (data?.product_id === "BTC-USD") {
-			btc = data.changes[0][1]
-		}
+		const newPrice = data?.changes[0][1]
+		const handler = tickersHandlers.get(data?.product_id.split("-")[0]) ?? [];
+		handler.forEach(fn => fn(newPrice))
 	}
 })
 
