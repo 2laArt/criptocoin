@@ -97,7 +97,7 @@
                 </span>
               </div>
               <div class="text-sm text-red-600" v-show="checkHaveCoin">
-                Такой тикер уже добавлен
+                {{ warnMessage }}
               </div>
             </template>
           </div>
@@ -244,7 +244,7 @@
           >
             <div class="px-4 py-5 sm:p-6 text-center">
               <dt class="text-sm font-medium text-gray-500 truncate">
-                {{ tick.name }} - EUR
+                {{ tick.name }} - {{ currentCurrency }}
               </dt>
               <dd
                 class="mt-1 text-3xl font-semibold text-gray-900"
@@ -294,9 +294,12 @@
       <!-- chart -->
       <section class="relative" v-if="chartCoin">
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-          {{ chartCoin.name }} - EUR
+          {{ chartCoin.name }} - {{ currentCurrency }}
         </h3>
-        <div class="flex items-end border-gray-600 border-b border-l h-64">
+        <div
+          class="flex items-end border-gray-600 border-b border-l h-64"
+          ref="chart"
+        >
           <div
             v-for="(bar, idx) in nornalizeChart()"
             :key="idx"
@@ -338,18 +341,16 @@
 
 
 <script>
-import {
-  subscribeToUpdata,
-  unsubscribeToUpdata,
-  getFullListCoins,
-} from "./api";
-
+import { subscribeToUpdata, unsubscribeToUpdata } from "./api";
+import { getFullListCoins } from "./requestOnFullListCoin";
 export default {
   name: "App",
   data() {
     return {
       loadPage: true,
       ticker: "",
+      currentCurrency: "BTC",
+      warnMessage: "",
       tickerArr: [],
       checkHaveCoin: false,
       helpListArr: [],
@@ -358,15 +359,18 @@ export default {
       fullListCoin: [],
       filter: "",
       page: 0,
+      worker: null,
+      maxChartElem: 1,
     };
   },
   created: function () {
     getFullListCoins(this.fullListCoin);
 
-    const bc = new BroadcastChannel("test_channel");
-    bc.onmessage = (e) => {
-      console.log(e.data);
-    };
+    // this.worker = new SharedWorker("testWorker.js");
+    // this.worker.onmessage = (e) => {
+    //   console.log(e);
+    // };
+
     const windowData = Object.fromEntries(
       new URL(window.location).searchParams.entries()
     );
@@ -388,11 +392,20 @@ export default {
     }
     setTimeout(() => (this.loadPage = false));
   },
+  mounted() {
+    window.addEventListener("resize", () => {
+      this.calcMaxChartElem(this.$refs.chart?.clientWidth);
+    });
+  },
+  beforeUnmount() {
+    window.removeEventListener("resize", this.calcMaxChartElem());
+  },
   computed: {
     startIndex() {
       return this.page * 6;
     },
     endIndex() {
+      ``;
       return (this.page + 1) * 6;
     },
     filteredTickers() {
@@ -439,6 +452,12 @@ export default {
   methods: {
     addCoin() {
       const newTicker = { name: this.ticker.toUpperCase(), price: "-" };
+      if (newTicker.name === "BTC") {
+        this.warnMessage = "Времменно не доступно";
+        this.checkHaveCoin = true;
+        return;
+      }
+      this.warnMessage = "Такой тикер уже добавлен";
       this.tickerArr.find((i) => i.name == newTicker.name)
         ? (this.checkHaveCoin = true)
         : ((this.tickerArr = [...this.tickerArr, newTicker]),
@@ -456,7 +475,6 @@ export default {
     },
     selected(tick) {
       this.chartCoin = tick;
-      setInterval(() => this.chartCoinArr.push(tick.price), 1000);
     },
     updataTickers(tickerName, newPrice) {
       const currentTicker = this.tickerArr.find(
@@ -464,6 +482,20 @@ export default {
       );
       if (currentTicker.price) {
         currentTicker.price = newPrice;
+      }
+      if (currentTicker.name === this.chartCoin?.name) {
+        this.chartCoinArr.push(newPrice);
+        this.calcMaxChartElem(this.$refs.chart?.clientWidth);
+      }
+    },
+    calcMaxChartElem(width) {
+      if (!this.$refs.chart) {
+        return;
+      }
+      this.maxChartElem = width / 38;
+      if (this.chartCoinArr.length > this.maxChartElem) {
+        const start = this.chartCoinArr.length - Math.floor(this.maxChartElem);
+        this.chartCoinArr = this.chartCoinArr.slice(start);
       }
     },
     deletCoin(tick) {
