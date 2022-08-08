@@ -1,17 +1,16 @@
 
-export async function getFullListCoins(arr) {
-	const f = await fetch('https://api.pro.coinbase.com/currencies').then(e => e.json());
-	f.filter(i => i.details.type === 'crypto').forEach(i => arr.push(i.id))
-}
 
 const tickersHandlers = new Map();
 const ws = new WebSocket('wss://ws-feed.exchange.coinbase.com');
 ws.addEventListener('message', (e) => {
-	const data = JSON.parse(e.data)
-
-	if (data.type === "l2update") {
-		const newPrice = data?.changes[0][1]
-		const handler = tickersHandlers.get(data?.product_id.split("-")[0]) ?? [];
+	const data = JSON.parse(e.data);
+	let productId = null
+	if (data.product_id) {
+		productId = data.product_id.split("-")[0]
+	}
+	if (data.type === "ticker" && productId) {
+		const newPrice = data?.price
+		const handler = tickersHandlers.get(productId) ?? [];
 		handler.forEach(fn => fn(newPrice))
 	}
 })
@@ -34,7 +33,7 @@ function subscribeMessage(ticker, secCoin = 'USD') {
 			`${ticker}-${secCoin}`
 		],
 		"channels": [
-			"level2",
+			"ticker",
 		]
 	}
 
@@ -47,7 +46,7 @@ function unsubscribeMessage(ticker, secCoin = 'USD') {
 			`${ticker}-${secCoin}`
 		],
 		"channels": [
-			"level2",
+			"ticker",
 		]
 	}
 	sendMessageToWs(msg)
